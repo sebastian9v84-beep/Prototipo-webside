@@ -1,0 +1,61 @@
+{
+  "usuarios": [],
+  "mensajes": [],
+  "pedidos": [
+    {
+      "id": "edb6ccf6-a4af-47ab-ae16-2872cfb16045",
+      "productos": [
+        {
+          "id": "gorra-anime",
+          "nombre": "Gorra Dragon Ball Z",
+          "detalles": "Gorra personalizada con estampado de Dragon Ball Z.",
+          "imagen": "https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=800&q=80",
+          "precio": 35000,
+          "talla": "Unica"
+        }
+      ],
+      "total": 35000,
+      "estado": "pendiente",
+      "creadoEn": "2026-05-07T16:44:41.717Z"
+    }
+  ],
+  "personalizaciones": [
+    {
+      "id": "a406caee-f216-45a3-9f95-1430cf981bde",
+      "modelo": "camisa",
+      "producto": "Camisa blanca",
+      "talla": "M",
+      "precio": 50000,
+      "nombreCliente": "Prueba",
+      "correo": "prueba@example.com",
+      "instrucciones": "Centro del pecho",
+      "imagen": "data:image/png;base64,iVBORw0KGgo=",
+      "diseno": {
+        "x": 50,
+        "y": 50,
+        "escala": 42
+      },
+      "creadoEn": "2026-05-07T13:57:00.724Z"
+    },
+    {
+      "id": "50b172b9-b577-4b32-b146-fe206dad9716",
+      "modelo": "hoodie",
+      "producto": "Hoodie blanco",
+      "talla": "M",
+      "precio": 95000,
+      "nombreCliente": "Prueba IA",
+      "correo": "prueba-ia@example.com",
+      "instrucciones": "Con forma nube y vista realista",
+      "imagen": "data:image/png;base64,iVBORw0KGgo=",
+      "diseno": {
+        "x": 52,
+        "y": 48,
+        "ancho": 44,
+        "alto": 36,
+        "forma": "nube",
+        "modoRealista": true
+      },
+      "creadoEn": "2026-05-07T14:09:15.369Z"
+    }
+  ]
+}
