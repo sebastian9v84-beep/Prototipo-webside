@@ -1,13 +1,14 @@
 import { createServer } from "node:http";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
+import { MongoClient } from "mongodb";
+import "dotenv/config";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, "data");
-const DB_FILE = join(DATA_DIR, "db.json");
-const PORT = 3001;
+const PORT = Number(process.env.PORT || 3001);
+const MONGODB_URI = process.env.MONGODB_URI;
+const DB_NAME = process.env.MONGODB_DB || "vs_custom_works";
+
+let mongoClient;
+let mongoDB;
 
 const categoriasCatalogo = [
   {
@@ -396,23 +397,30 @@ const leerBody = (req) =>
     });
   });
 
-const cargarDB = async () => {
-  try {
-    const contenido = await readFile(DB_FILE, "utf8");
-    return JSON.parse(contenido);
-  } catch {
-    return {
-      usuarios: [],
-      mensajes: [],
-      pedidos: [],
-      personalizaciones: [],
-    };
+const conectarMongo = async () => {
+  if (!MONGODB_URI) {
+    throw new Error("Falta MONGODB_URI en el archivo .env.");
   }
+
+  mongoClient = new MongoClient(MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000,
+  });
+  await mongoClient.connect();
+  mongoDB = mongoClient.db(DB_NAME);
+  await mongoDB.collection("usuarios").createIndex({ correo: 1 }, { unique: true });
 };
 
-const guardarDB = async (db) => {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(DB_FILE, JSON.stringify(db, null, 2), "utf8");
+const coleccion = (nombre) => {
+  if (!mongoDB) {
+    throw new Error("La base de datos aun no esta conectada.");
+  }
+
+  return mongoDB.collection(nombre);
+};
+
+const insertarDocumento = async (nombreColeccion, documento) => {
+  await coleccion(nombreColeccion).insertOne(documento);
+  return documento;
 };
 
 const crearId = () => crypto.randomUUID();
@@ -443,6 +451,7 @@ const servidor = createServer(async (req, res) => {
       return respuesta(res, 200, {
         ok: true,
         mensaje: "Backend de VS Custom funcionando.",
+        baseDatos: DB_NAME,
       });
     }
 
@@ -483,9 +492,8 @@ const servidor = createServer(async (req, res) => {
         });
       }
 
-      const db = await cargarDB();
       const correo = datos.correo.trim().toLowerCase();
-      const existe = db.usuarios.some((usuario) => usuario.correo === correo);
+      const existe = await coleccion("usuarios").findOne({ correo });
 
       if (existe) {
         return respuesta(res, 409, {
@@ -503,8 +511,7 @@ const servidor = createServer(async (req, res) => {
         creadoEn: new Date().toISOString(),
       };
 
-      db.usuarios.push(usuario);
-      await guardarDB(db);
+      await insertarDocumento("usuarios", usuario);
 
       return respuesta(res, 201, {
         ok: true,
@@ -529,7 +536,6 @@ const servidor = createServer(async (req, res) => {
         });
       }
 
-      const db = await cargarDB();
       const mensaje = {
         id: crearId(),
         nombre: datos.nombre.trim(),
@@ -538,8 +544,7 @@ const servidor = createServer(async (req, res) => {
         creadoEn: new Date().toISOString(),
       };
 
-      db.mensajes.push(mensaje);
-      await guardarDB(db);
+      await insertarDocumento("mensajes", mensaje);
 
       return respuesta(res, 201, {
         ok: true,
@@ -581,7 +586,6 @@ const servidor = createServer(async (req, res) => {
         });
       }
 
-      const db = await cargarDB();
       const personalizacion = {
         id: crearId(),
         modelo: modelo.id,
@@ -605,9 +609,7 @@ const servidor = createServer(async (req, res) => {
         creadoEn: new Date().toISOString(),
       };
 
-      db.personalizaciones = db.personalizaciones || [];
-      db.personalizaciones.push(personalizacion);
-      await guardarDB(db);
+      await insertarDocumento("personalizaciones", personalizacion);
 
       return respuesta(res, 201, {
         ok: true,
@@ -632,7 +634,6 @@ const servidor = createServer(async (req, res) => {
         });
       }
 
-      const db = await cargarDB();
       const total = datos.productos.reduce((suma, producto) => {
         return suma + Number(producto.precio || 0);
       }, 0);
@@ -645,8 +646,7 @@ const servidor = createServer(async (req, res) => {
         creadoEn: new Date().toISOString(),
       };
 
-      db.pedidos.push(pedido);
-      await guardarDB(db);
+      await insertarDocumento("pedidos", pedido);
 
       return respuesta(res, 201, {
         ok: true,
@@ -667,6 +667,14 @@ const servidor = createServer(async (req, res) => {
   }
 });
 
-servidor.listen(PORT, () => {
-  console.log(`Backend listo en http://localhost:${PORT}`);
-});
+conectarMongo()
+  .then(() => {
+    servidor.listen(PORT, () => {
+      console.log(`MongoDB conectado a la base de datos ${DB_NAME}`);
+      console.log(`Backend listo en http://localhost:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("No se pudo conectar a MongoDB:", error.message);
+    process.exit(1);
+  });
